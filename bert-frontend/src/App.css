@@ -1,0 +1,126 @@
+.container {
+min-height: 100vh;
+display: flex;
+justify-content: center;
+align-items: center;
+padding: 20px;
+font-family: Arial, sans-serif;
+box-sizing: border-box;
+}
+
+.card {
+width: 100%;
+max-width: 650px;
+padding: 35px;
+background: white;
+border-radius: 16px;
+box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+text-align: center;
+color: #172554;
+}
+
+.subtitle {
+text-align: center;
+color: #64748b;
+margin-bottom: 35px;
+}
+
+label {
+display: block;
+font-weight: bold;
+margin-bottom: 10px;
+}
+
+textarea {
+width: 100%;
+height: 150px;
+padding: 15px;
+box-sizing: border-box;
+border: 1px solid #cbd5e1;
+border-radius: 10px;
+font-size: 16px;
+resize: vertical;
+}
+
+textarea:focus {
+outline: 2px solid #3b82f6;
+border-color: transparent;
+}
+
+.character-count {
+text-align: right;
+font-size: 12px;
+color: #64748b;
+margin-top: 8px;
+}
+
+button {
+width: 100%;
+margin-top: 20px;
+padding: 14px;
+background: #2563eb;
+color: white;
+border: none;
+border-radius: 9px;
+font-size: 16px;
+cursor: pointer;
+}
+
+button:disabled {
+opacity: 0.6;
+cursor: not-allowed;
+}
+
+.loading {
+text-align: center;
+color: #2563eb;
+}
+
+.error {
+color: #dc2626;
+text-align: center;
+}
+
+.result {
+margin-top: 30px;
+padding: 25px;
+border-radius: 12px;
+text-align: center;
+}
+
+.positive {
+background: #dcfce7;
+color: #166534;
+}
+
+.negative {
+background: #fee2e2;
+color: #991b1b;
+}
+
+.sentiment-icon {
+font-size: 40px;
+}
+
+.progress-background {
+height: 10px;
+background: rgba(100, 116, 139, 0.2);
+border-radius: 10px;
+overflow: hidden;
+margin-top: 15px;
+}
+
+.progress-fill {
+height: 100%;
+background: currentColor;
+border-radius: 10px;
+}
+
+@media (max-width: 600px) {
+.card {
+padding: 22px;
+}
+}
