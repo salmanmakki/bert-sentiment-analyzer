@@ -5,3 +5,9 @@ google-genai
 pymongo
 certifi
 dnspython
+PyJWT
+sentence-transformers
+PyMuPDF
+python-multipart
+email-validator
+pwdlib[argon2]

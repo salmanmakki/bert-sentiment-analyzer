@@ -8,7 +8,7 @@ import certifi
 import jwt
 from dotenv import load_dotenv
 from email_validator import validate_email, EmailNotValidError
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -43,6 +43,14 @@ if not MONGO_URI:
 if not JWT_SECRET_KEY or len(JWT_SECRET_KEY) < 32:
     raise ValueError("JWT_SECRET_KEY must contain at least 32 characters.")
 
+    # RAG and AI Agent services
+from rag_service import (
+    ask_question as rag_ask_question,
+    upload_and_process_pdf,
+    close_connections as close_rag_connections,
+)
+
+from agent_service import run_agent
 
 # ============================================================
 # 2. GEMINI CLIENT
@@ -129,21 +137,33 @@ async def lifespan(app: FastAPI):
     try:
         mongo_client.admin.command("ping")
         users_collection.create_index("email", unique=True)
+
         conversations_collection.create_index(
             "conversation_id",
             unique=True,
         )
+
         conversations_collection.create_index(
             [("user_id", 1), ("created_at", -1)]
         )
+
         print("MongoDB connected successfully.")
+
         yield
+
     except Exception as error:
         print("Application startup error:", repr(error))
         raise
+
     finally:
+        try:
+            close_rag_connections()
+        except Exception as error:
+            print("RAG MongoDB connection close error:", repr(error))
+
         mongo_client.close()
-        print("MongoDB connection closed.")
+
+        print("MongoDB connections closed.")
 
 
 app = FastAPI(
@@ -192,6 +212,12 @@ class ConversationCreate(BaseModel):
 class MessageRequest(BaseModel):
     message: str
 
+class RAGQuestionRequest(BaseModel):
+    question: str
+
+
+class AgentRequest(BaseModel):
+    question: str
 
 class UserRegister(BaseModel):
     name: str
@@ -695,9 +721,115 @@ def delete_conversation(
             detail="Unable to delete conversation.",
         )
 
+# ============================================================
+# 20. RAG AND AI AGENT ENDPOINTS
+# ============================================================
+
+@app.post("/upload")
+async def upload_pdf(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are allowed.",
+        )
+
+    file_bytes = await file.read()
+
+    if not file_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file is empty.",
+        )
+
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="PDF size must not exceed 10 MB.",
+        )
+
+    try:
+        result = upload_and_process_pdf(
+            file_bytes,
+            file.filename,
+            current_user["user_id"],
+        )
+        return result
+
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+    except Exception as error:
+        print("PDF upload error:", repr(error))
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process PDF.",
+        )
+
+    finally:
+        await file.close()
+
+
+@app.post("/ask")
+async def ask_pdf_question(
+    request: RAGQuestionRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    question = request.question.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=400,
+            detail="Question cannot be empty.",
+        )
+
+    try:
+        return rag_ask_question(
+            question,
+            current_user["user_id"],
+        )
+
+    except Exception as error:
+        print("RAG question error:", repr(error))
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to answer your question.",
+        )
+
+
+@app.post("/agent")
+async def agent_endpoint(
+    request: AgentRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    question = request.question.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=400,
+            detail="Question cannot be empty.",
+        )
+
+    try:
+        result = run_agent(question)
+
+        return {
+            "question": question,
+            "result": result,
+        }
+
+    except Exception as error:
+        print("Agent error:", repr(error))
+        raise HTTPException(
+            status_code=500,
+            detail="AI Agent request failed.",
+        )        
+
 
 # ============================================================
-# 20. SERVER RUNNER
+# 21. SERVER RUNNER
 # ============================================================
 
 if __name__ == "__main__":
