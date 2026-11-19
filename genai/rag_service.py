@@ -1,7 +1,6 @@
 import os
 import pymupdf
 from pymongo import MongoClient
-from sentence_transformers import SentenceTransformer
 from google import genai
 
 
@@ -32,9 +31,25 @@ if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY is missing.")
 
 
-print("Loading embedding model...")
+embedding_model = None
 
-embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+
+def get_embedding_model():
+    global embedding_model
+
+    if embedding_model is None:
+        print("Loading embedding model...")
+
+        from sentence_transformers import SentenceTransformer
+
+        embedding_model = SentenceTransformer(
+            EMBEDDING_MODEL,
+            device="cpu"
+        )
+
+        print("Embedding model loaded successfully.")
+
+    return embedding_model
 
 print("Connecting to MongoDB...")
 
@@ -60,7 +75,7 @@ gemini_client = genai.Client(
 
 def retrieve_documents(question, user_id, limit=3):
 
-    query_embedding = embedding_model.encode(
+    query_embedding = get_embedding_model().encode(
         question
     ).tolist()
 
@@ -212,7 +227,7 @@ def upload_and_process_pdf(file_bytes, filename, user_id):
     documents = []
 
     for index, chunk in enumerate(chunks):
-        embedding = embedding_model.encode(chunk).tolist()
+        embedding = get_embedding_model().encode(chunk).tolist()
 
         documents.append({
             "text": chunk,

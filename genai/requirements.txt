@@ -11,3 +11,4 @@ PyMuPDF
 python-multipart
 email-validator
 pwdlib[argon2]
+--extra-index-url https://download.pytorch.org/whl/cpu
